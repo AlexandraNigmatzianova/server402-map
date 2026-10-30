@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Карта сервера #402</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Layout: war-table map on the left, alliance ledger on the right; stacks on phones. Map colours mimic the in-game territories in both themes. */
+:root{
+  --bg:#edf0e8; --surface:#fbfcf8; --ink:#1c271b; --muted:#59684f; --line:#d2dbc9;
+  --accent:#b8650f; --accent-soft:#f6e3c6; --ours:#1f8a74; --chip:#e4eadc;
+  --font-display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --font-body:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --map-ground:#3f5833;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111811; --surface:#182219; --ink:#e5ede0; --muted:#9db095; --line:#2b392a;
+  --accent:#f0a43a; --accent-soft:#3a2a12; --ours:#4fd1b2; --chip:#223024; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111811; --surface:#182219; --ink:#e5ede0; --muted:#9db095; --line:#2b392a;
+  --accent:#f0a43a; --accent-soft:#3a2a12; --ours:#4fd1b2; --chip:#223024; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 32px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header h1{font-family:var(--font-display);font-weight:700;font-size:clamp(22px,3.2vw,32px);margin:0;letter-spacing:.01em;text-wrap:balance}
+header p{margin:6px 0 0;color:var(--muted)}
+.stats{display:flex;flex-wrap:wrap;gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;gap:8px;align-items:baseline}
+.stat b{font-variant-numeric:tabular-nums;font-size:17px}
+.stat span{color:var(--muted);font-size:13px}
+.stat.ours{border-color:var(--ours)}
+.stat.ours b{color:var(--ours)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+@media (min-width:980px){.grid{grid-template-columns:minmax(0,1fr) 370px}}
+.mapcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.toolbar .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.toolbar .lbl{font-size:13px;color:var(--muted)}
+.lv button,.ctl button,.chipbtn,.seg button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:8px;padding:4px 10px;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.lv button[aria-pressed="false"]{opacity:.45;text-decoration:line-through}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.lv button:focus-visible,.ctl button:focus-visible,.row:focus-visible,.chipbtn:focus-visible,.seg button:focus-visible,#find:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--muted);cursor:pointer}
+.chk input{accent-color:var(--ours);width:16px;height:16px;margin:0}
+.list.fade .row.strong .sw{opacity:.45}
+#find{font:inherit;font-size:14px;padding:5px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0;flex:1 1 170px;max-width:260px}
+.mapbox{position:relative;border-radius:10px;overflow:hidden;background:var(--map-ground)}
+svg#map{display:block;width:100%;height:auto;aspect-ratio:3040/3000;touch-action:none;cursor:grab}
+svg#map:active{cursor:grabbing}
+.ctl{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px}
+.ctl button{width:36px;height:36px;padding:0;font-size:18px;background:rgba(20,30,18,.72);color:#fff;border-color:rgba(255,255,255,.25)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
+.card h2{font-family:var(--font-display);font-weight:500;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.city-title{display:flex;gap:10px;align-items:center}
+.badge{flex:none;width:30px;height:32px;display:grid;place-items:center;font-weight:700;color:#fff;background:#e8962d;
+  clip-path:polygon(0 0,100% 0,100% 70%,50% 100%,0 70%);font-variant-numeric:tabular-nums}
+.city-title h3{margin:0;font-size:19px;line-height:1.2;text-wrap:balance}
+.city-title small{display:block;color:var(--muted);font-size:13px;font-weight:400}
+.buff{margin:10px 0 0;font-size:14px}
+.buff b{color:var(--accent)}
+.owner{margin:12px 0 0;display:flex;gap:10px;align-items:center}
+.sw{flex:none;width:22px;height:22px;border-radius:5px;border:1px solid rgba(0,0,0,.25)}
+.owner .t{min-width:0}
+.owner .t b{font-weight:700}
+.owner .t span.sub{display:block;color:var(--muted);font-size:13px}
+.nb{margin-top:12px}
+.nb p{margin:0 0 6px;font-size:13px;color:var(--muted)}
+.nb .chips{display:flex;flex-wrap:wrap;gap:6px}
+.chipbtn{font-weight:500;padding:3px 8px}
+.chipbtn em{font-style:normal;color:var(--muted);margin-left:4px}
+.list{display:flex;flex-direction:column}
+.row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:28px 18px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 6px;border-radius:8px;cursor:pointer}
+.row:hover{background:var(--chip)}
+.row[aria-pressed="true"]{background:var(--accent-soft)}
+.row .rk{font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;font-weight:600}
+.row .rk.top{color:var(--accent)}
+.row .sw{width:18px;height:18px;border-radius:4px}
+.row .sw.none{background:transparent;border:1px dashed var(--line)}
+.row .nm{min-width:0}
+.row .nm b{font-weight:700}
+.row .nm .full{color:var(--muted);font-size:13px;margin-left:4px;overflow-wrap:anywhere}
+.row .nm .cities{display:block;margin:2px 0 0;font-size:12px;color:var(--muted)}
+.row .mt{font-variant-numeric:tabular-nums;font-size:13px;text-align:right;white-space:nowrap}
+.row.ours .nm b{color:var(--ours)}
+.us{display:inline-block;margin-left:6px;font-size:11px;line-height:16px;font-weight:700;color:#fff;background:var(--ours);border-radius:5px;padding:0 5px;vertical-align:1px}
+.cut{display:flex;align-items:center;gap:8px;margin:6px 0;color:var(--muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
+.cut::before,.cut::after{content:"";flex:1;border-top:1px dashed var(--line)}
+.note{color:var(--muted);font-size:13px;max-width:72ch;margin:0}
+/* map */
+.zone{stroke:#273d1f;stroke-width:2;stroke-linejoin:round;vector-effect:non-scaling-stroke;cursor:pointer;transition:opacity .15s,fill .2s}
+.stripe{pointer-events:none;transition:opacity .15s}
+svg.levels .stripe{display:none}
+.mk{cursor:pointer;transition:opacity .15s}
+.mk text{font-family:"Golos Text",system-ui,sans-serif;paint-order:stroke;stroke:#1b2616;stroke-linejoin:round}
+.mk .lvl{font-weight:700;fill:#fff;stroke:none}
+.mk .tag{font-weight:700;fill:#fff}
+.mk .nm{font-weight:600;fill:#fff;display:none}
+svg.zoomed .mk .nm{display:inline}
+svg.hl .zone:not(.on),svg.hl .stripe:not(.on){opacity:.22}
+svg.hl .mk:not(.on){opacity:.35}
+.mk.off{opacity:.12}
+.selzone{fill:none;stroke:#fff;stroke-width:3;vector-effect:non-scaling-stroke;stroke-dasharray:7 5;pointer-events:none}
+.oursedge{fill:none;stroke:#fff;stroke-width:3.5;vector-effect:non-scaling-stroke;pointer-events:none}
+.route{fill:none;stroke-width:5;vector-effect:non-scaling-stroke;stroke-linecap:round;pointer-events:none}
+.route-halo{fill:none;stroke:rgba(0,0,0,.6);stroke-width:9;vector-effect:non-scaling-stroke;stroke-linecap:round;pointer-events:none}
+.plan-zone{fill:none;stroke-width:4;vector-effect:non-scaling-stroke;stroke-dasharray:12 7;pointer-events:none}
+.plan{transition:opacity .15s}
+svg.noplans .plan{display:none}
+.plan.dim{opacity:.1}
+.plans{display:flex;flex-direction:column;gap:4px}
+.prow{all:unset;box-sizing:border-box;display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;padding:8px 6px;border-radius:8px;cursor:pointer;align-items:start}
+.prow:hover{background:var(--chip)}
+.prow[aria-pressed="true"]{background:var(--accent-soft)}
+.prow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.prow .ln{height:6px;border-radius:3px;margin-top:8px;box-shadow:0 0 0 1.5px rgba(0,0,0,.55)}
+.prow b{font-weight:700}
+.prow .steps{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.prow .steps s{text-decoration:none;color:var(--ink)}
+.prow .pn{display:block;font-size:12.5px;margin-top:4px}
+.clash{margin:10px 0 0;padding:10px 0 0;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:6px;font-size:13px}
+.clash p{margin:0}
+.inplan{margin:8px 0 0;font-size:13.5px}
+.inplan span{display:inline-block;width:12px;height:4px;border-radius:2px;vertical-align:3px;margin-right:6px;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+@media (prefers-reduced-motion:reduce){.zone,.stripe,.mk,.plan{transition:none}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Карта сервера #402</h1>
+    <p>Зоны городов, их владельцы, баффы и рейтинг мощи альянсов. Владельцы — по скриншотам от 23 октября 2026 и изменениям по 30 октября (захваты, обмены и передачи городов), рейтинг — на 29 октября. Планы захвата — по картам, которые альянсы публиковали 24 октября; у каждого шага указан нынешний владелец.</p>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="grid">
+    <section class="mapcard" aria-label="Карта">
+      <div class="toolbar">
+        <input id="find" list="citylist" placeholder="Найти город…" autocomplete="off" aria-label="Найти город">
+        <datalist id="citylist"></datalist>
+        <div class="seg" role="group" aria-label="Раскраска карты">
+          <button type="button" id="modeOwn" aria-pressed="true">Владельцы</button>
+          <button type="button" id="modeLvl" aria-pressed="false">Уровни</button>
+        </div>
+        <div class="grp"><span class="lbl">Уровни:</span><div class="lv" id="lv" role="group" aria-label="Фильтр по уровню"></div></div>
+        <label class="chk" for="fadeStrong"><input type="checkbox" id="fadeStrong" checked> Сильнее нас — бледнее</label>
+        <label class="chk" for="showPlans"><input type="checkbox" id="showPlans" checked> Планы альянсов</label>
+      </div>
+      <div class="mapbox">
+        <svg id="map" role="img" aria-label="Карта сервера с зонами городов"></svg>
+        <div class="ctl">
+          <button type="button" id="zin" aria-label="Приблизить">+</button>
+          <button type="button" id="zout" aria-label="Отдалить">−</button>
+          <button type="button" id="zreset" aria-label="Показать всю карту">⤢</button>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <aside class="side">
+      <section class="card" id="sel" aria-live="polite"></section>
+      <section class="card">
+        <h2>Планы захвата</h2>
+        <div class="plans" id="plans"></div>
+        <div class="clash" id="clash"></div>
+      </section>
+      <section class="card">
+        <h2>Рейтинг мощи альянсов</h2>
+        <div class="list" id="list"></div>
+      </section>
+    </aside>
+  </div>
+
+  <p class="note">Границы зон и баффы взяты с общей схемы карты, она одинакова для всех серверов. Какой город в какой зоне, я сопоставила по скриншотам, по положению и уровню. Баффы переведены с английской схемы, в игре формулировки могут отличаться.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+const DATA = {"W":3040,"H":3000,"zones":[{"id":1,"lvl":1,"poly":[0,0,0,343,281,343,282,0],"ax":141,"ay":141,"buff":"Timber Output","pct":5,"city":"Старый дуб"},{"id":2,"lvl":1,"poly":[283,0,284,378,486,380,491,315,567,315,575,307,574,0],"ax":428,"ay":145,"buff":"Grain Output","pct":5,"city":"Гравийный склон"},{"id":3,"lvl":1,"poly":[575,0,577,234,770,233,777,297,966,295,965,0],"ax":839,"ay":126,"buff":"Timber Output","pct":5,"city":"Город Виндмилл"},{"id":4,"lvl":1,"poly":[1419,0,1416,51,1334,57,1333,370,1382,372,1391,384,1609,385,1611,257,1688,255,1698,247,1697,0],"ax":1480,"ay":186,"buff":"Grain Output","pct":5,"city":"Гипсовая стена"},{"id":5,"lvl":1,"poly":[1698,0,1699,226,2006,227,2013,235,2013,390,2145,391,2145,0],"ax":2029,"ay":116,"buff":"Grain Output","pct":5,"city":"Гнездо ворона"},{"id":6,"lvl":1,"poly":[2473,0,2146,0,2147,392,2241,390,2245,213,2471,211],"ax":2252,"ay":106,"buff":"Timber Output","pct":5,"city":"Лазурный склон"},{"id":7,"lvl":1,"poly":[2474,0,2475,113,2583,115,2585,258,2736,257,2738,170,2810,166,2810,79,2892,75,2892,0],"ax":2676,"ay":96,"buff":"Grain Output","pct":5,"city":"Пшеничный сноп"},{"id":8,"lvl":1,"poly":[3039,0,2893,0,2891,78,2811,79,2811,166,2739,170,2739,349,3039,349],"ax":2917,"ay":227,"buff":"Timber Output","pct":5,"city":"Город Стоунбрук"},{"id":9,"lvl":1,"poly":[777,298,777,585,1079,585,1085,652,1176,651,1178,297],"ax":984,"ay":441,"buff":"Timber Output","pct":5,"city":"Разбитый плацдарм"},{"id":10,"lvl":1,"poly":[0,344,0,751,145,749,148,591,487,586,486,381,286,381,281,344],"ax":126,"ay":470,"buff":"Grain Output","pct":5,"city":"Опаловая шахта"},{"id":11,"lvl":1,"poly":[2810,350,2809,530,2718,536,2717,682,2843,685,2845,858,2987,858,2989,772,3039,771,3039,350],"ax":2918,"ay":588,"buff":"Grain Output","pct":5,"city":"Оленья тропа"},{"id":12,"lvl":1,"poly":[618,673,617,914,626,931,919,931,922,865,929,859,1082,857,1079,586,777,586,774,667],"ax":903,"ay":725,"buff":"Timber Output","pct":5,"city":"Рыбацкий залив"},{"id":13,"lvl":1,"poly":[570,592,147,593,146,749,292,753,294,962,375,962,381,911,618,911,617,673,574,671],"ax":446,"ay":756,"buff":"Grain Output","pct":5,"city":"Красные пустоши"},{"id":14,"lvl":1,"poly":[2390,632,2388,858,2467,859,2479,865,2478,956,2485,963,2677,965,2684,909,2807,909,2810,861,2844,858,2842,685,2676,685,2668,679,2667,630],"ax":2601,"ay":801,"buff":"Timber Output","pct":5,"city":"Березовая роща"},{"id":15,"lvl":1,"poly":[290,752,0,752,0,1360,197,1360,198,1070,292,1066],"ax":146,"ay":897,"buff":"Timber Output","pct":5,"city":"Ручей Миллстоун"},{"id":16,"lvl":1,"poly":[3039,772,2990,772,2987,859,2811,861,2810,1086,2886,1090,2891,1246,3039,1246],"ax":2924,"ay":974,"buff":"Grain Output","pct":5,"city":"Сосновая роща"},{"id":17,"lvl":1,"poly":[199,1070,200,1362,581,1362,582,1218,510,1212,510,1130,503,1121,427,1120,421,1068],"ax":337,"ay":1225,"buff":"Grain Output","pct":5,"city":"Вороний клюв"},{"id":18,"lvl":1,"poly":[2744,1203,2744,1520,2883,1523,2888,1593,3039,1594,3039,1247,2891,1247,2884,1200],"ax":2895,"ay":1386,"buff":"Timber Output","pct":5,"city":"Родник"},{"id":19,"lvl":1,"poly":[0,1361,0,1703,292,1701,293,1614,360,1608,361,1365],"ax":161,"ay":1522,"buff":"Grain Output","pct":5,"city":"Лисья нора"},{"id":20,"lvl":1,"poly":[3039,1595,2887,1594,2883,1713,2779,1720,2781,2035,2972,2033,2978,1974,3039,1973],"ax":2910,"ay":1840,"buff":"Timber Output","pct":5,"city":"Мшистый утес"},{"id":21,"lvl":1,"poly":[236,1704,0,1704,0,2144,102,2145,104,1965,238,1964],"ax":118,"ay":1822,"buff":"Timber Output","pct":5,"city":"Кленовая деревня"},{"id":22,"lvl":1,"poly":[238,1707,241,1964,454,1962,458,1883,601,1883,601,1702,293,1701],"ax":356,"ay":1821,"buff":"Grain Output","pct":5,"city":"Долина Грейвулф"},{"id":23,"lvl":1,"poly":[3039,1974,2978,1975,2972,2034,2824,2036,2825,2222,2820,2229,2788,2230,2790,2344,2894,2343,2901,2384,3039,2383],"ax":2930,"ay":2241,"buff":"Grain Output","pct":5,"city":"Дом из красного кирпича"},{"id":24,"lvl":1,"poly":[0,2145,0,2640,276,2640,275,2400,340,2394,339,2219,102,2218,102,2146],"ax":141,"ay":2359,"buff":"Timber Output","pct":5,"city":"Орлиный пик"},{"id":25,"lvl":1,"poly":[343,2173,341,2394,276,2400,277,2578,662,2577,663,2173],"ax":501,"ay":2410,"buff":"Timber Output","pct":5,"city":"Старая мельница"},{"id":26,"lvl":1,"poly":[2505,2230,2506,2521,2716,2521,2724,2461,2788,2458,2787,2230],"ax":2636,"ay":2362,"buff":"Grain Output","pct":5,"city":"Деревня Миствейл"},{"id":27,"lvl":1,"poly":[2790,2345,2789,2458,2722,2464,2721,2550,2785,2555,2787,2618,3039,2617,3039,2384,2901,2385,2894,2344],"ax":2909,"ay":2500,"buff":"Grain Output","pct":5,"city":"Шишечный рынок"},{"id":28,"lvl":1,"poly":[1354,2433,1353,2619,1401,2624,1403,2702,1397,2714,1320,2716,1318,2764,1583,2765,1583,2634,1690,2626,1691,2529,1682,2522,1629,2519,1627,2434],"ax":1496,"ay":2552,"buff":"Timber Output","pct":5,"city":"Капающая пещера"},{"id":29,"lvl":1,"poly":[1584,2634,1584,2765,2058,2765,2058,2601,2054,2595,2002,2596,1991,2590,1986,2540,1773,2540,1764,2573,1693,2573,1688,2632],"ax":1884,"ay":2653,"buff":"Grain Output","pct":5,"city":"Налетчик"},{"id":30,"lvl":1,"poly":[523,2805,524,2999,959,2999,958,2863,813,2863,807,2800],"ax":622,"ay":2901,"buff":"Timber Output","pct":5,"city":"Рынок Фростлиф"},{"id":31,"lvl":1,"poly":[2787,2619,2787,2926,2848,2930,2850,2999,3039,2999,3039,2618],"ax":2912,"ay":2748,"buff":"Timber Output","pct":5,"city":"Воющая долина"},{"id":32,"lvl":1,"poly":[0,2641,0,2999,523,2999,522,2806,282,2803,276,2641],"ax":145,"ay":2854,"buff":"Grain Output","pct":5,"city":"Стог сена"},{"id":33,"lvl":1,"poly":[960,2769,960,2999,1318,2999,1318,2765,1254,2764,1250,2703,1024,2701,1020,2764],"ax":1137,"ay":2853,"buff":"Grain Output","pct":5,"city":"Угольная шахта"},{"id":34,"lvl":1,"poly":[2784,2750,2505,2754,2499,2816,2410,2820,2411,2999,2849,2999,2847,2930,2786,2926],"ax":2611,"ay":2875,"buff":"Grain Output","pct":5,"city":"Павильон светильников"},{"id":35,"lvl":1,"poly":[2409,2820,2351,2819,2347,2758,2341,2754,2061,2753,2058,2766,2006,2767,2006,2999,2410,2999],"ax":2128,"ay":2876,"buff":"Timber Output","pct":5,"city":"Ежевичная чаща"},{"id":36,"lvl":1,"poly":[1319,2766,1319,2999,1675,2999,1674,2827,1586,2826,1582,2766],"ax":1436,"ay":2883,"buff":"Timber Output","pct":5,"city":"Теснина"},{"id":37,"lvl":1,"poly":[1583,2766,1586,2825,1675,2827,1676,2999,2005,2999,2005,2767],"ax":1839,"ay":2882,"buff":"Grain Output","pct":5,"city":"Раковина улитки"},{"id":38,"lvl":2,"poly":[966,0,966,294,1178,296,1182,372,1332,370,1333,57,1344,51,1416,50,1418,0],"ax":1114,"ay":148,"buff":"Grain Gather Spd","pct":5,"city":"Медная улица"},{"id":39,"lvl":2,"poly":[2581,113,2475,114,2474,205,2468,214,2244,215,2243,387,2196,393,2198,521,2461,522,2469,429,2583,427],"ax":2372,"ay":343,"buff":"Herb Output","pct":5,"city":"Сейлпорт"},{"id":40,"lvl":2,"poly":[1612,257,1615,533,1849,534,1862,570,1929,573,1936,564,1935,541,1946,528,2076,529,2077,395,2011,388,2012,235,2006,228,1700,227,1694,255],"ax":1857,"ay":382,"buff":"Grain Gather Spd","pct":5,"city":"Рынок Стоунчант"},{"id":41,"lvl":2,"poly":[773,235,583,233,576,239,571,314,489,318,487,588,570,591,577,672,774,666],"ax":632,"ay":447,"buff":"Grain Gather Spd","pct":5,"city":"Город Вайтстоун"},{"id":42,"lvl":2,"poly":[2735,258,2585,259,2584,427,2466,434,2464,629,2667,629,2670,682,2716,683,2717,536,2801,534,2809,525,2808,351,2737,348],"ax":2615,"ay":526,"buff":"Herb Output","pct":5,"city":"Город Анвил"},{"id":43,"lvl":2,"poly":[1385,374,1181,374,1179,646,1172,653,1084,655,1085,841,1452,844,1467,837,1470,610,1464,598,1389,594],"ax":1305,"ay":704,"buff":"Herb Output","pct":5,"city":"Янтарная дорога"},{"id":44,"lvl":2,"poly":[1391,385,1390,594,1469,599,1473,744,1663,746,1671,666,1775,661,1777,536,1613,532,1609,386],"ax":1502,"ay":495,"buff":"Herb Output","pct":5,"city":"Вайолет"},{"id":45,"lvl":2,"poly":[2078,394,2078,526,2067,532,2068,782,2124,786,2127,859,2387,858,2390,631,2463,629,2462,524,2198,522,2195,393],"ax":2234,"ay":676,"buff":"Grain Gather Spd","pct":5,"city":"Город Твинспайр"},{"id":46,"lvl":2,"poly":[2808,911,2686,909,2677,966,2529,968,2527,1052,2477,1059,2473,1201,2479,1207,2669,1207,2677,1263,2741,1262,2742,1204,2748,1200,2885,1199,2885,1090,2809,1086],"ax":2686,"ay":1087,"buff":"Grain Gather Spd","pct":5,"city":"Рынок Виндспайр"},{"id":47,"lvl":2,"poly":[293,967,293,1065,421,1067,427,1119,503,1120,511,1130,514,1214,610,1215,614,1104,661,1100,668,1048,775,1047,774,932,626,932,611,912,381,912,375,963],"ax":545,"ay":1020,"buff":"Herb Output","pct":5,"city":"Город Голдгрейн"},{"id":48,"lvl":2,"poly":[734,1407,702,1405,699,1368,689,1363,362,1365,361,1608,294,1614,293,1700,601,1701,605,1545,736,1540],"ax":488,"ay":1492,"buff":"Herb Output","pct":5,"city":"Жаворонковый переулок"},{"id":49,"lvl":2,"poly":[2452,1720,2452,2009,2502,2011,2507,2036,2780,2035,2777,1720],"ax":2608,"ay":1878,"buff":"Grain Gather Spd","pct":5,"city":"Водопад нимф"},{"id":50,"lvl":2,"poly":[947,1791,804,1791,801,1828,782,1830,775,1841,776,1955,698,1957,700,2118,694,2127,666,2129,667,2215,823,2216,825,2121,897,2118,900,2052,907,2043,1019,2040,1019,1905,948,1902],"ax":870,"ay":1955,"buff":"Herb Output","pct":5,"city":"Двор роз"},{"id":51,"lvl":2,"poly":[697,1958,603,1958,600,1884,458,1884,454,1963,104,1966,101,2216,338,2217,343,2172,663,2172,665,2129,694,2126,699,2118],"ax":240,"ay":2091,"buff":"Grain Gather Spd","pct":5,"city":"Гавань Сейлшадоу"},{"id":52,"lvl":2,"poly":[2823,2037,2507,2037,2501,2201,2506,2227,2822,2227],"ax":2601,"ay":2133,"buff":"Herb Output","pct":5,"city":"Город Грейтвуд"},{"id":53,"lvl":2,"poly":[2502,2207,2153,2209,2151,2333,2067,2337,2067,2468,2499,2469],"ax":2283,"ay":2338,"buff":"Herb Output","pct":5,"city":"Сад роз"},{"id":54,"lvl":2,"poly":[2151,2210,1831,2212,1829,2275,1765,2279,1766,2361,1809,2362,1814,2375,1814,2538,2064,2536,2066,2337,2150,2333],"ax":1937,"ay":2346,"buff":"Grain Gather Spd","pct":5,"city":"Паром Черноводья"},{"id":55,"lvl":2,"poly":[667,2216,667,2552,801,2551,809,2594,979,2590,978,2443,934,2437,930,2430,930,2272,827,2270,823,2217],"ax":797,"ay":2397,"buff":"Herb Output","pct":5,"city":"Дорога звездной пыли"},{"id":56,"lvl":2,"poly":[980,2521,983,2653,1019,2661,1025,2701,1250,2702,1256,2764,1315,2763,1324,2713,1400,2711,1400,2624,1352,2619,1351,2433,1075,2433,1067,2517],"ax":1194,"ay":2567,"buff":"Herb Output","pct":5,"city":"Город Айронгейт"},{"id":57,"lvl":2,"poly":[2500,2469,2068,2470,2067,2533,2059,2541,1991,2542,1990,2588,2002,2595,2058,2598,2062,2752,2259,2753,2267,2660,2414,2659,2421,2586,2504,2584],"ax":2174,"ay":2587,"buff":"Grain Gather Spd","pct":5,"city":"Маячный пункт"},{"id":58,"lvl":2,"poly":[2265,2752,2344,2754,2351,2818,2491,2817,2503,2807,2503,2756,2515,2750,2783,2748,2786,2562,2782,2553,2723,2553,2717,2521,2506,2522,2503,2586,2418,2590,2414,2660,2267,2661],"ax":2609,"ay":2636,"buff":"Grain Gather Spd","pct":5,"city":"Долина Стагколл"},{"id":59,"lvl":2,"poly":[726,2554,666,2553,660,2579,278,2581,281,2801,722,2801,728,2791],"ax":392,"ay":2692,"buff":"Herb Output","pct":5,"city":"Город Эхо"},{"id":60,"lvl":3,"poly":[2066,531,1946,529,1936,541,1937,564,1929,574,1862,571,1849,535,1778,536,1776,661,1670,669,1664,746,1669,828,1754,829,1759,899,1805,903,1812,955,1932,954,1935,788,2067,782],"ax":1884,"ay":685,"buff":"Herb Output","pct":10,"city":"Башня суховея"},{"id":61,"lvl":3,"poly":[1084,844,1084,963,1178,967,1187,1052,1311,1051,1312,945,1318,938,1439,938,1453,932,1450,844],"ax":1240,"ay":920,"buff":"Timber Output","pct":10,"city":"Соколиная крепость"},{"id":62,"lvl":3,"poly":[777,934,780,1119,1179,1111,1185,1052,1180,971,1084,965,1080,862,929,860,923,865,919,932],"ax":988,"ay":1011,"buff":"Herb Output","pct":10,"city":"Город Дипмир"},{"id":63,"lvl":3,"poly":[2475,862,2126,861,2127,978,2253,978,2258,984,2259,1202,2472,1201,2476,1059,2524,1054,2528,968,2489,965,2477,956],"ax":2372,"ay":1004,"buff":"Grain Output","pct":10,"city":"Город Айронволл"},{"id":64,"lvl":3,"poly":[668,1049,662,1100,615,1104,612,1213,583,1218,582,1361,697,1363,702,1404,773,1402,777,1363,921,1360,920,1122,780,1120,775,1048],"ax":737,"ay":1241,"buff":"Timber Output","pct":10,"city":"Ветреные высоты"},{"id":65,"lvl":3,"poly":[2395,1494,2451,1500,2594,1497,2598,1438,2608,1424,2739,1424,2740,1264,2677,1264,2669,1208,2479,1208,2477,1389,2463,1397,2397,1399],"ax":2584,"ay":1320,"buff":"Grain Output","pct":10,"city":"Город Холиспринг"},{"id":66,"lvl":3,"poly":[2451,1503,2453,1719,2778,1720,2882,1713,2883,1524,2746,1523,2739,1425,2610,1424,2599,1438,2594,1498],"ax":2655,"ay":1601,"buff":"Herb Output","pct":10,"city":"Роща Сильверлиф"},{"id":67,"lvl":3,"poly":[847,1544,606,1545,603,1957,775,1955,774,1841,778,1831,799,1829,801,1677,807,1670,846,1669,850,1662],"ax":706,"ay":1644,"buff":"Timber Output","pct":10,"city":"Врата бури"},{"id":68,"lvl":3,"poly":[2504,2015,2451,2009,2166,2012,2163,2070,2156,2078,2005,2080,2004,2207,2497,2205,2504,2193],"ax":2253,"ay":2108,"buff":"Grain Output","pct":10,"city":"Лагерь морозного волка"},{"id":69,"lvl":3,"poly":[909,2043,901,2052,897,2119,826,2121,826,2267,931,2272,932,2433,978,2440,982,2516,1067,2516,1070,2436,1152,2430,1150,2194,1091,2187,1087,2044],"ax":1042,"ay":2289,"buff":"Timber Output","pct":10,"city":"Небесные высоты"},{"id":70,"lvl":3,"poly":[1371,2094,1261,2095,1252,2121,1092,2120,1092,2187,1144,2190,1152,2198,1153,2431,1376,2429,1379,2236],"ax":1265,"ay":2239,"buff":"Herb Output","pct":10,"city":"Прибрежная цитадель"},{"id":71,"lvl":3,"poly":[1379,2237,1378,2430,1625,2432,1630,2519,1689,2523,1691,2564,1700,2574,1761,2573,1771,2540,1813,2537,1813,2375,1809,2363,1765,2361,1764,2279,1627,2277,1622,2240,1615,2235],"ax":1477,"ay":2333,"buff":"Grain Output","pct":10,"city":"Река Стиллвотер"},{"id":72,"lvl":4,"poly":[1313,945,1313,1050,1383,1055,1386,1163,1549,1164,1561,1101,1810,1099,1807,908,1759,901,1754,830,1668,828,1666,753,1660,746,1473,745,1470,833,1452,845,1453,934,1318,939],"ax":1595,"ay":956,"buff":"Grain Gather Spd","pct":15,"city":"Рассветная твердыня"},{"id":73,"lvl":4,"poly":[2478,1207,2263,1204,2256,1199,2254,1152,1984,1153,1982,1449,2393,1451,2397,1398,2463,1396,2476,1389],"ax":2131,"ay":1302,"buff":"Grain Gather Spd","pct":15,"city":"Вечный пик"},{"id":74,"lvl":4,"poly":[735,1407,737,1540,847,1543,855,1603,1027,1603,1036,1565,1178,1564,1177,1432,1096,1432,1090,1361,776,1366,772,1404],"ax":950,"ay":1480,"buff":"Herb Output","pct":15,"city":"Призрачный город"},{"id":75,"lvl":4,"poly":[1177,1566,1036,1566,1027,1604,853,1603,849,1668,802,1677,804,1790,947,1790,951,1903,1112,1902,1111,1759,1146,1753,1148,1728,1179,1726],"ax":1016,"ay":1710,"buff":"Grain Gather Spd","pct":15,"city":"Крепость Сендвинд"},{"id":76,"lvl":4,"poly":[1376,1750,1372,2094,1379,2235,1620,2235,1624,2096,1649,2089,1648,2006,1441,2004,1439,1751],"ax":1490,"ay":2119,"buff":"Grain Gather Spd","pct":15,"city":"Изумрудный город"},{"id":77,"lvl":4,"poly":[1955,2111,1999,2113,2007,2077,2156,2077,2169,2010,2449,2009,2448,1761,2120,1761,2116,1953,1957,1956],"ax":2242,"ay":1885,"buff":"Timber Output","pct":15,"city":"Мифриловый зал"},{"id":78,"lvl":4,"poly":[1625,2096,1621,2237,1627,2276,1826,2276,1831,2211,2003,2206,2000,2115,1954,2111,1952,2065,1655,2065,1649,2091],"ax":1730,"ay":2170,"buff":"Grain Output","pct":15,"city":"Город Санспайр"},{"id":79,"lvl":5,"poly":[1938,786,1935,951,1921,957,1813,956,1811,1099,1924,1100,1936,1152,2254,1151,2255,981,2124,975,2123,786],"ax":2024,"ay":1036,"buff":"Grain Gather Spd","pct":20,"city":"Храм природы"},{"id":80,"lvl":5,"poly":[1382,1055,1186,1052,1180,1111,1172,1116,925,1116,924,1358,1090,1360,1091,1296,1098,1289,1381,1290],"ax":1272,"ay":1176,"buff":"Herb Output","pct":20,"city":"Храм порядка"},{"id":81,"lvl":5,"poly":[1891,1518,1893,1853,1954,1859,1958,1955,2114,1955,2116,1764,2122,1759,2448,1757,2451,1501,2396,1497,2392,1452,1983,1452,1979,1514],"ax":2103,"ay":1608,"buff":"Grain Output","pct":20,"city":"Храм войны"},{"id":82,"lvl":5,"poly":[1148,1729,1146,1754,1112,1759,1113,1902,1020,1905,1020,2040,1090,2046,1092,2119,1252,2120,1261,2094,1371,2093,1373,1864,1240,1861,1235,1730],"ax":1210,"ay":1980,"buff":"Timber Output","pct":20,"city":"Храм хаоса"},{"id":83,"lvl":6,"poly":[1981,1158,1933,1152,1924,1101,1561,1102,1549,1165,1386,1165,1385,1342,1715,1346,1721,1460,1842,1461,1847,1514,1974,1515,1981,1508],"ax":1835,"ay":1261,"buff":"Training Spd","pct":5,"city":"Крепость львиного сердца"},{"id":84,"lvl":6,"poly":[1093,1294,1093,1427,1179,1435,1180,1725,1237,1732,1240,1860,1372,1862,1379,1748,1621,1746,1616,1683,1342,1683,1342,1349,1384,1342,1381,1291],"ax":1252,"ay":1380,"buff":"Building Spd","pct":20,"city":"Небесная крепость"},{"id":85,"lvl":6,"poly":[1722,1461,1722,1683,1622,1685,1622,1746,1440,1751,1441,2003,1646,2004,1651,2065,1952,2064,1953,1859,1892,1853,1890,1518,1844,1513,1842,1462],"ax":1733,"ay":1866,"buff":"Research Spd","pct":20,"city":"Крепость сумерек"},{"id":86,"lvl":7,"poly":[1343,1349,1343,1683,1721,1683,1717,1348,1383,1343],"ax":1511,"ay":1514,"buff":null,"pct":null,"city":"Королевский город"},{"id":87,"lvl":1,"poly":[727,2554,728,2797,811,2800,813,2862,958,2862,959,2769,1018,2765,1020,2667,1016,2660,984,2657,979,2592,809,2595,801,2552],"ax":869,"ay":2705,"buff":"Grain Output","pct":5,"city":"Сухой колодец"}],"edges":[[1,2],[2,3],[3,38],[4,38],[4,5],[5,6],[6,7],[7,8],[7,39],[6,39],[4,40],[5,40],[3,41],[2,41],[7,42],[8,42],[39,42],[3,9],[9,38],[9,41],[2,10],[8,11],[11,42],[38,43],[4,43],[9,43],[10,41],[4,44],[43,44],[40,44],[5,45],[6,45],[39,45],[40,45],[42,45],[40,60],[45,60],[44,60],[12,41],[9,12],[10,13],[13,41],[14,45],[14,42],[12,43],[12,13],[11,14],[43,72],[44,72],[60,72],[10,15],[13,15],[11,16],[60,79],[45,79],[43,61],[61,72],[45,63],[14,63],[14,16],[12,62],[63,79],[61,62],[14,46],[16,46],[13,47],[12,47],[47,62],[72,79],[15,47],[46,63],[47,64],[62,64],[61,80],[72,80],[62,80],[15,17],[17,47],[72,83],[79,83],[64,80],[73,79],[63,73],[73,83],[80,83],[18,46],[16,18],[65,73],[46,65],[17,64],[18,65],[80,84],[83,84],[84,86],[83,86],[64,74],[74,80],[17,19],[74,84],[17,48],[48,64],[19,48],[48,74],[65,66],[18,66],[81,83],[73,81],[65,81],[85,86],[83,85],[66,81],[81,85],[48,67],[67,74],[74,75],[75,84],[20,66],[18,20],[67,75],[84,85],[19,22],[22,48],[22,67],[19,21],[21,22],[49,66],[49,81],[20,49],[75,82],[82,84],[76,84],[76,85],[77,81],[49,77],[50,75],[50,67],[76,82],[22,51],[51,67],[50,82],[77,85],[50,51],[21,51],[20,23],[68,77],[49,68],[49,52],[20,52],[52,68],[23,52],[50,69],[69,82],[78,85],[77,78],[76,78],[70,82],[70,76],[68,78],[69,70],[21,24],[24,51],[25,51],[25,50],[53,68],[52,53],[54,78],[54,68],[53,54],[25,55],[50,55],[55,69],[24,25],[26,53],[26,52],[23,26],[71,76],[70,71],[71,78],[54,71],[23,27],[26,27],[28,70],[28,71],[56,69],[56,70],[28,56],[53,57],[26,57],[54,57],[55,56],[26,58],[27,58],[57,58],[29,71],[29,54],[29,57],[55,59],[55,87],[25,59],[59,87],[28,29],[24,59],[56,87],[27,31],[31,58],[32,59],[33,87],[33,56],[34,58],[31,34],[35,57],[35,58],[29,35],[33,36],[28,36],[36,37],[29,37],[35,37],[30,59],[30,87],[30,32],[34,35],[30,33],[1,10],[15,19],[24,32]],"cities":[{"name":"Старый дуб","tag":"Kaz1","lvl":1,"zone":1},{"name":"Гравийный склон","tag":"Guru","lvl":1,"zone":2},{"name":"Опаловая шахта","tag":"Guru","lvl":1,"zone":10},{"name":"Красные пустоши","tag":"Kaz1","lvl":1,"zone":13},{"name":"Город Голдгрейн","tag":"SWS","lvl":2,"zone":47},{"name":"Ручей Миллстоун","tag":"ROG","lvl":1,"zone":15},{"name":"Вороний клюв","tag":"FAFO","lvl":1,"zone":17},{"name":"Город Вайтстоун","tag":"Kaz1","lvl":2,"zone":41},{"name":"Рыбацкий залив","tag":"OMEN","lvl":1,"zone":12},{"name":"Ветреные высоты","tag":"SWS","lvl":3,"zone":64},{"name":"Город Виндмилл","tag":"CEO","lvl":1,"zone":3},{"name":"Разбитый плацдарм","tag":"BER","lvl":1,"zone":9},{"name":"Город Дипмир","tag":"SWS","lvl":3,"zone":62},{"name":"Медная улица","tag":"BER","lvl":2,"zone":38},{"name":"Янтарная дорога","tag":"OMEN","lvl":2,"zone":43},{"name":"Соколиная крепость","tag":"OMEN","lvl":3,"zone":61},{"name":"Храм порядка","tag":null,"lvl":5,"zone":80},{"name":"Гипсовая стена","tag":"CEO","lvl":1,"zone":4},{"name":"Вайолет","tag":"HID","lvl":2,"zone":44},{"name":"Рассветная твердыня","tag":"OMEN","lvl":4,"zone":72},{"name":"Рынок Стоунчант","tag":"HID","lvl":2,"zone":40},{"name":"Башня суховея","tag":"HID","lvl":3,"zone":60},{"name":"Гнездо ворона","tag":"HID","lvl":1,"zone":5},{"name":"Храм природы","tag":null,"lvl":5,"zone":79},{"name":"Город Твинспайр","tag":"MYST","lvl":2,"zone":45},{"name":"Лазурный склон","tag":"MYST","lvl":1,"zone":6},{"name":"Сейлпорт","tag":"MYST","lvl":2,"zone":39},{"name":"Город Айронволл","tag":"MYST","lvl":3,"zone":63},{"name":"Город Анвил","tag":"PRSM","lvl":2,"zone":42},{"name":"Березовая роща","tag":"PRSM","lvl":1,"zone":14},{"name":"Рынок Виндспайр","tag":"PRSM","lvl":2,"zone":46},{"name":"Пшеничный сноп","tag":"ROG","lvl":1,"zone":7},{"name":"Город Стоунбрук","tag":"ROG","lvl":1,"zone":8},{"name":"Оленья тропа","tag":"Ash","lvl":1,"zone":11},{"name":"Сосновая роща","tag":"Ash","lvl":1,"zone":16},{"name":"Родник","tag":"DARK","lvl":1,"zone":18},{"name":"Мшистый утес","tag":"DARK","lvl":1,"zone":20},{"name":"Город Грейтвуд","tag":"RSH","lvl":2,"zone":52},{"name":"Город Холиспринг","tag":"PRSM","lvl":3,"zone":65},{"name":"Роща Сильверлиф","tag":"DARK","lvl":3,"zone":66},{"name":"Водопад нимф","tag":"DARK","lvl":2,"zone":49},{"name":"Вечный пик","tag":"MYST","lvl":4,"zone":73},{"name":"Храм войны","tag":null,"lvl":5,"zone":81},{"name":"Мифриловый зал","tag":"PRSM","lvl":4,"zone":77},{"name":"Крепость львиного сердца","tag":null,"lvl":6,"zone":83},{"name":"Крепость сумерек","tag":null,"lvl":6,"zone":85},{"name":"Королевский город","tag":null,"lvl":7,"zone":86},{"name":"Небесная крепость","tag":null,"lvl":6,"zone":84},{"name":"Храм хаоса","tag":null,"lvl":5,"zone":82},{"name":"Призрачный город","tag":"SWS","lvl":4,"zone":74},{"name":"Крепость Сендвинд","tag":"HID","lvl":4,"zone":75},{"name":"Жаворонковый переулок","tag":"PLG","lvl":2,"zone":48},{"name":"Врата бури","tag":"MEOW","lvl":3,"zone":67},{"name":"Долина Грейвулф","tag":"MEOW","lvl":1,"zone":22},{"name":"Лисья нора","tag":"PLG","lvl":1,"zone":19},{"name":"Кленовая деревня","tag":"POL","lvl":1,"zone":21},{"name":"Гавань Сейлшадоу","tag":"MEOW","lvl":2,"zone":51},{"name":"Орлиный пик","tag":"AFA","lvl":1,"zone":24},{"name":"Старая мельница","tag":"AFA","lvl":1,"zone":25},{"name":"Город Эхо","tag":"PLG","lvl":2,"zone":59},{"name":"Стог сена","tag":"MEOW","lvl":1,"zone":32},{"name":"Двор роз","tag":"MEOW","lvl":2,"zone":50},{"name":"Дорога звездной пыли","tag":"SWS","lvl":2,"zone":55},{"name":"Рынок Фростлиф","tag":"FUN","lvl":1,"zone":30},{"name":"Небесные высоты","tag":"SWS","lvl":3,"zone":69},{"name":"Сухой колодец","tag":"DARK","lvl":1,"zone":87},{"name":"Прибрежная цитадель","tag":"SAW","lvl":3,"zone":70},{"name":"Город Айронгейт","tag":"SAW","lvl":2,"zone":56},{"name":"Угольная шахта","tag":"trql","lvl":1,"zone":33},{"name":"Изумрудный город","tag":"SAW","lvl":4,"zone":76},{"name":"Река Стиллвотер","tag":"SAW","lvl":3,"zone":71},{"name":"Капающая пещера","tag":"SAW","lvl":1,"zone":28},{"name":"Теснина","tag":"UND","lvl":1,"zone":36},{"name":"Город Санспайр","tag":"UND","lvl":4,"zone":78},{"name":"Паром Черноводья","tag":"UND","lvl":2,"zone":54},{"name":"Налетчик","tag":"ViNe","lvl":1,"zone":29},{"name":"Раковина улитки","tag":"POL","lvl":1,"zone":37},{"name":"Лагерь морозного волка","tag":"UND","lvl":3,"zone":68},{"name":"Сад роз","tag":"UND","lvl":2,"zone":53},{"name":"Маячный пункт","tag":"ViNe","lvl":2,"zone":57},{"name":"Ежевичная чаща","tag":"ROC","lvl":1,"zone":35},{"name":"Деревня Миствейл","tag":"Kaz1","lvl":1,"zone":26},{"name":"Долина Стагколл","tag":"PLN","lvl":2,"zone":58},{"name":"Павильон светильников","tag":"ROC","lvl":1,"zone":34},{"name":"Дом из красного кирпича","tag":"RSH","lvl":1,"zone":23},{"name":"Шишечный рынок","tag":"PLN","lvl":1,"zone":27},{"name":"Воющая долина","tag":"PLN","lvl":1,"zone":31}]};
+const RANKING = [{"rank": 1, "tag": "SAW", "name": "SegcArseWargasm", "might": 1263577954}, {"rank": 2, "tag": "SWS", "name": "Skywalkers", "might": 1226379109}, {"rank": 3, "tag": "HID", "name": "Hidden", "might": 998955729}, {"rank": 4, "tag": "PRSM", "name": "Prism", "might": 950507287}, {"rank": 5, "tag": "OMEN", "name": "Death by Omens", "might": 846659062}, {"rank": 6, "tag": "UND", "name": "unleashed", "might": 722136700}, {"rank": 7, "tag": "MYST", "name": "MysticStorm", "might": 703882097}, {"rank": 8, "tag": "ROG", "name": "RebelsOfGaming", "might": 632532324}, {"rank": 9, "tag": "DARK", "name": "DarkstarLegion", "might": 628431343}, {"rank": 10, "tag": "BER", "name": "Berserker", "might": 626864247}, {"rank": 11, "tag": "PLG", "name": "Plague Legion", "might": 621870650}, {"rank": 12, "tag": "ROC", "name": "Ravens Of Chaos", "might": 595946615}, {"rank": 13, "tag": "AFA", "name": "AgenturFürArbeit", "might": 552522690}, {"rank": 14, "tag": "Kaz1", "name": "Alga Kazakhstan", "might": 534374137}, {"rank": 15, "tag": "PLN", "name": "PolskaArmia", "might": 530377843}, {"rank": 16, "tag": "Ash", "name": "Ashborn", "might": 502238902}, {"rank": 17, "tag": "FUN", "name": "Just4Fun", "might": 499847774}, {"rank": 18, "tag": "MEOW", "name": "MEOWGANG", "might": 499631772}, {"rank": 19, "tag": "RSH", "name": "RomaPhenix", "might": 478362685}, {"rank": 20, "tag": "POL", "name": "PolskaHusaria", "might": 415933306}, {"rank": 21, "tag": "ViNe", "name": "ViuvaNegra", "might": 392882929}, {"rank": 22, "tag": "FAFO", "name": "Chaos Unsupervised", "might": 374213014}, {"rank": 23, "tag": "ALS", "name": "AbyssalLords", "might": 345055612}, {"rank": 24, "tag": "CEO", "name": "War Dynasty", "might": 331740411}, {"rank": 25, "tag": "Guru", "name": "saviors", "might": 328932160}, {"rank": 26, "tag": "ICE", "name": "IceQueen", "might": 323786787}, {"rank": 27, "tag": "USA", "name": "Last Asylum", "might": 315913264}, {"rank": 28, "tag": "SH9", "name": "Mommo", "might": 310177383}, {"rank": 29, "tag": "aCP", "name": "AbyssalHavoc", "might": 307136323}, {"rank": 30, "tag": "nFk", "name": "tjrtyhsryg", "might": 293236304}, {"rank": 31, "tag": "USa", "name": "imperial power", "might": 288612244}, {"rank": 32, "tag": "ADM", "name": "Анклав", "might": 286957364}, {"rank": 33, "tag": "End", "name": "EndOfWorld", "might": 277202309}, {"rank": 48, "tag": "trql", "name": "tranquille", "might": 234807973}];
+const PLANS = [{"id": "SWS", "label": "SWS", "color": "#9cff3d", "zones": [15, 47, 64, 74, 80], "note": "На 30 октября у SWS Город Голдгрейн, Ветреные высоты и Призрачный город, а Ручей Миллстоун передан ROG. Не взят только Храм порядка (ур. 5)."}, {"id": "SAW", "label": "SAW", "color": "#ff7a1a", "zones": [36, 56, 70, 76, 82], "note": "Прибрежная цитадель и Изумрудный город взяты, Теснина передана UND. Не взят только Храм хаоса (ур. 5)."}, {"id": "OMEN", "label": "OMEN", "color": "#ffe14d", "zones": [12, 43, 61, 72, 79], "note": "Выполнены все шаги, кроме последнего: Храм природы (ур. 5) пока свободен."}, {"id": "MYST", "label": "MYST", "color": "#ff3b8d", "zones": [6, 39, 45, 63, 73], "note": "Выполнен полностью: Айронволл и Вечный пик у MYST. От Вечного пика открыт выход к Крепости львиного сердца (ур. 6)."}, {"id": "PRSM", "label": "PRSM: Храм войны", "color": "#52cbb0", "zones": [81], "note": "По договорённости Храм войны (ур. 5) станет городом PRSM. Для этого у них есть Мифриловый зал (ур. 4)."}];
+const CLASH = ["<b>Все семь городов 4-го уровня заняты:</b> они у SWS, SAW, HID, PRSM, OMEN, UND и MYST. Взять храм 5-го уровня сейчас могут только они, а храмов всего четыре, и все пока свободны. Храм войны по договорённости отойдёт PRSM.", "<b>Небесная крепость (ур. 6)</b> граничит с Призрачным городом SWS, Крепостью Сендвинд HID и Изумрудным городом SAW.", "<b>Крепость львиного сердца (ур. 6)</b> граничит с Рассветной твердыней OMEN и Вечным пиком MYST, а <b>Крепость сумерек (ур. 6)</b> — с Изумрудным городом SAW и Мифриловым залом PRSM.", "<b>DARK</b> держит Рощу Сильверлиф (ур. 3), но свободных городов 3-го и 4-го уровня не осталось: дальше только по договорённости. У SWS с Небесными высотами 6 городов — это предел."];
+const OURS = "DARK";
+const PAL = {teal:"#52cbb0", green:"#5dbb47", orange:"#c98b38", red:"#c85b4a", yellow:"#d6bf2c", purple:"#a956bd", blue:"#4f74c0", pink:"#cf72cf", violet:"#8e48b0", lilac:"#bb7fd8"};
+const STYLE = {
+  indo:["teal",0], Guru:["green",0], OMEN:["orange",0], Kaz1:["red",1], SWS:["red",0], FAFO:["yellow",1], STA:["green",1],
+  BER:["purple",1], AFA:["yellow",1], MEOW:["blue",0], MYST:["pink",1], PRSM:["teal",0], ROG:["pink",0], Ash:["purple",1],
+  POL:["yellow",0], DARK:["teal",1], PLG:["blue",1], HID:["pink",0], UND:["yellow",0], FUN:["orange",1], SAW:["purple",0],
+  ViNe:["blue",1], ROC:["green",1], RSH:["teal",1], PLN:["orange",1], CEO:["violet",0], trql:["lilac",0]
+};
+const LVLCOL = {1:"#41824f",2:"#e0d64b",3:"#c45b24",4:"#754093",5:"#4f89b9",6:"#ba4b40",7:"#697b5b"};
+const FREE = "#5f7c56", ROYAL = "#7a6a52";
+const BUFF = {"Grain Output":["Производство зерна","зерно"],"Timber Output":["Производство древесины","древесина"],"Herb Output":["Производство трав","травы"],
+  "Grain Gather Spd":["Скорость сбора зерна","сбор зерна"],"Training Spd":["Скорость тренировки","тренировка"],"Building Spd":["Скорость строительства","стройка"],"Research Spd":["Скорость исследований","исследования"]};
+const U = DATA.W/6835;
+const lvlName = l => l === 7 ? "Королевский город" : `уровень ${l}`;
+const fmtM = m => (m/1e6).toLocaleString("ru-RU",{minimumFractionDigits:1,maximumFractionDigits:1}) + " млн";
+const colorOf = t => t && STYLE[t] ? PAL[STYLE[t][0]] : null;
+
+const Z = {}; DATA.zones.forEach(z => Z[z.id] = z);
+const CITIES = DATA.cities.map(c => ({...c, z: Z[c.zone]}));
+const NB = {}; DATA.edges.forEach(([a,b]) => { (NB[a] ||= []).push(b); (NB[b] ||= []).push(a); });
+const cityByZone = {}; CITIES.forEach((c,i) => cityByZone[c.zone] = i);
+const pathOf = z => { const p = z.poly; let s = `M${p[0]},${p[1]}`; for (let k=2;k<p.length;k+=2) s += `L${p[k]},${p[k+1]}`; return s + "Z"; };
+
+// alliances
+const byTag = {};
+RANKING.forEach(a => byTag[a.tag] = {...a, cities:[]});
+CITIES.forEach((c,i) => { if (c.tag){ if(!byTag[c.tag]) byTag[c.tag] = {rank:null, tag:c.tag, name:"", might:null, cities:[]}; byTag[c.tag].cities.push(i);} });
+const alliances = Object.values(byTag).sort((a,b) => (a.rank??999) - (b.rank??999) || a.tag.localeCompare(b.tag));
+const buffSummary = a => { const s = {}; a.cities.forEach(i => { const z = CITIES[i].z; if (z.buff) s[z.buff] = (s[z.buff]||0) + z.pct; });
+  return Object.entries(s).sort((x,y)=>y[1]-x[1]).map(([b,p]) => `${BUFF[b][1]} +${p}%`).join(", "); };
+
+// stats
+const owned = CITIES.filter(c=>c.tag).length, free = CITIES.filter(c=>!c.tag && c.lvl<7).length, ours = byTag[OURS];
+const freeL = [...new Set(CITIES.filter(c=>!c.tag && c.lvl<7).map(c=>c.lvl))].sort(), freeLv = freeL.length ? (freeL.length > 1 ? `${freeL[0]}–${freeL[freeL.length-1]}` : `${freeL[0]}`) : "—";
+document.getElementById("stats").innerHTML = `
+  <div class="stat"><b>${CITIES.length-1}</b><span>городов + Королевский</span></div>
+  <div class="stat"><b>${owned}</b><span>заняты</span></div>
+  <div class="stat"><b>${free}</b><span>свободны (ур. ${freeLv})</span></div>
+  <div class="stat"><b>${alliances.filter(a=>a.cities.length).length}</b><span>альянсов с городами</span></div>
+  <div class="stat ours"><b>${ours.rank}-е</b><span>место ${OURS} · ${fmtM(ours.might)} · ${buffSummary(ours) || "без баффов"}</span></div>`;
+
+// alliances stronger than us by might get washed-out colours
+const STRONG = new Set(alliances.filter(a => a.might && a.might > ours.might).map(a => a.tag));
+const strongMaxRank = Math.max(...alliances.filter(a => STRONG.has(a.tag)).map(a => a.rank));
+let fadeOn = true;
+const mixHex = (h, g, t) => { const p = (s,i) => parseInt(s.substr(i,2),16);
+  return "#" + [1,3,5].map(i => Math.round(p(h,i) + (p(g,i)-p(h,i))*t).toString(16).padStart(2,"0")).join(""); };
+const faded = col => mixHex(col, "#c3cbbb", 0.6);
+const isFaded = c => fadeOn && c.tag && STRONG.has(c.tag) && c.tag !== hlTag;
+
+// svg
+const svg = d3.select("#map").attr("viewBox", `0 0 ${DATA.W} ${DATA.H}`);
+const defs = svg.append("defs");
+const pat = defs.append("pattern").attr("id","stripes").attr("patternUnits","userSpaceOnUse")
+  .attr("width",150*U).attr("height",110*U).attr("patternTransform","rotate(-35)");
+pat.append("rect").attr("x",18*U).attr("y",34*U).attr("width",86*U).attr("height",38*U).attr("rx",19*U).attr("fill","rgba(0,0,0,.24)");
+pat.append("rect").attr("x",93*U).attr("y",89*U).attr("width",86*U).attr("height",38*U).attr("rx",19*U).attr("fill","rgba(0,0,0,.24)");
+const root = svg.append("g");
+const gZ = root.append("g"), gS = root.append("g"), gE = root.append("g"), gP = root.append("g"), gM = root.append("g");
+let mode = "own";
+let hlTag = null;
+const fillOwn = c => c.lvl===7 ? ROYAL : c.tag ? (isFaded(c) ? faded(colorOf(c.tag)) : colorOf(c.tag)) : FREE;
+const fillLvl = c => LVLCOL[c.lvl];
+const zoneSel = gZ.selectAll("path").data(CITIES).join("path").attr("class","zone").attr("d", c=>pathOf(c.z))
+  .attr("fill", fillOwn).on("click", (e,c) => select(CITIES.indexOf(c)));
+const strSel = gS.selectAll("path").data(CITIES.filter(c=>c.tag && STYLE[c.tag][1])).join("path")
+  .attr("class","stripe").attr("d", c=>pathOf(c.z)).attr("fill","url(#stripes)");
+gE.selectAll("path").data(CITIES.filter(c=>c.tag===OURS)).join("path").attr("class","oursedge").attr("d", c=>pathOf(c.z));
+const selZone = gE.append("path").attr("class","selzone").attr("display","none");
+
+const shield = "M-56,-62 H56 V22 L0,62 L-56,22 Z";
+const mk = gM.selectAll("g").data(CITIES).join("g").attr("class","mk")
+  .attr("transform", c=>`translate(${c.z.ax},${c.z.ay})`).on("click",(e,c)=>select(CITIES.indexOf(c)));
+const inner = mk.append("g").attr("class","inner");
+inner.append("path").attr("d",shield).attr("transform",c=>`scale(${(c.lvl===7?1.35:0.82+c.lvl*0.07)*U})`)
+  .attr("fill",c=>c.lvl===7?"#f2b84b":"#e8962d").attr("stroke","#7a430c").attr("stroke-width",9);
+inner.append("text").attr("class","lvl").attr("text-anchor","middle").attr("dy","0.32em").attr("font-size",c=>(c.lvl===7?92:78)*U).text(c=>c.lvl);
+inner.filter(c=>c.tag).append("text").attr("class","tag").attr("text-anchor","middle").attr("y",c=>(c.lvl>=5?150:138)*U)
+  .attr("font-size",86*U).attr("stroke-width",18*U).text(c=>c.tag);
+inner.append("text").attr("class","nm").attr("text-anchor","middle").attr("y",c=>(c.tag?(c.lvl>=5?236:224):(c.lvl>=7?168:142))*U)
+  .attr("font-size",66*U).attr("stroke-width",14*U).text(c=>c.name);
+
+// alliance capture plans
+PLANS.forEach(p => {
+  const m = defs.append("marker").attr("id","arr-"+p.id).attr("viewBox","0 0 10 10").attr("refX",6).attr("refY",5)
+    .attr("markerUnits","userSpaceOnUse").attr("orient","auto").attr("class","arrow");
+  m.append("path").attr("d","M0,0 L10,5 L0,10 Z").attr("fill",p.color).attr("stroke","rgba(0,0,0,.6)").attr("stroke-width",1.2);
+  const g = gP.append("g").attr("class","plan").attr("id","plan-"+p.id);
+  p.zones.forEach(zid => g.append("path").attr("class","plan-zone").attr("d", pathOf(Z[zid])).attr("stroke", p.color));
+  const pts = p.zones.map(zid => [Z[zid].ax, Z[zid].ay]);
+  for (let k = 0; k + 1 < pts.length; k++){
+    const [x1,y1] = pts[k], [x2,y2] = pts[k+1], d = Math.hypot(x2-x1,y2-y1), ux = (x2-x1)/d, uy = (y2-y1)/d, cut = Math.min(70, d*0.3);
+    const seg = `M${x1+ux*cut},${y1+uy*cut}L${x2-ux*cut},${y2-uy*cut}`;
+    g.append("path").attr("class","route-halo").attr("d",seg);
+    g.append("path").attr("class","route").attr("d",seg).attr("stroke",p.color).attr("marker-end",`url(#arr-${p.id})`);
+  }
+});
+let planFocus = null;
+function showPlan(id){
+  planFocus = id;
+  gP.selectAll(".plan").classed("dim", function(){ return id && this.id !== "plan-"+id; });
+  document.querySelectorAll(".prow").forEach(r => r.setAttribute("aria-pressed", r.dataset.id === id));
+  if (id){
+    const p = PLANS.find(x => x.id === id), xs = p.zones.map(z=>Z[z].ax), ys = p.zones.map(z=>Z[z].ay);
+    const x0 = Math.min(...xs)-260, x1 = Math.max(...xs)+260, y0 = Math.min(...ys)-260, y1 = Math.max(...ys)+260;
+    const k = Math.max(1, Math.min(4, DATA.W/(x1-x0), DATA.H/(y1-y0)));
+    const t = d3.zoomIdentity.translate(DATA.W/2, DATA.H/2).scale(k).translate(-(x0+x1)/2, -(y0+y1)/2);
+    svg.transition().duration(window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450).call(zoom.transform, t);
+  }
+}
+document.getElementById("plans").innerHTML = PLANS.map(p => `<button type="button" class="prow" data-id="${p.id}" aria-pressed="false">
+  <span class="ln" style="background:${p.color}"></span>
+  <span><b>${p.label}</b>
+  <span class="steps">${p.zones.map(z => { const c = CITIES[cityByZone[z]]; return `<s>${c.name}</s> ${c.lvl}${c.tag ? " · " + c.tag : ""}`; }).join(" → ")}</span>
+  <span class="pn">${p.note}</span></span></button>`).join("");
+document.querySelectorAll(".prow").forEach(b => b.onclick = () => showPlan(planFocus === b.dataset.id ? null : b.dataset.id));
+document.getElementById("clash").innerHTML = CLASH.map(s => `<p>${s}</p>`).join("");
+document.getElementById("showPlans").addEventListener("change", e => svg.classed("noplans", !e.target.checked));
+
+function refreshFill(){
+  zoneSel.attr("fill", mode==="own" ? fillOwn : fillLvl);
+  strSel.attr("opacity", c => isFaded(c) ? .35 : 1);
+  const lst = document.getElementById("list"); if (lst) lst.classList.toggle("fade", fadeOn);
+}
+function setMode(m){
+  mode = m;
+  refreshFill();
+  svg.classed("levels", m==="lvl");
+  document.getElementById("modeOwn").setAttribute("aria-pressed", m==="own");
+  document.getElementById("modeLvl").setAttribute("aria-pressed", m==="lvl");
+  const lg = document.getElementById("legend");
+  lg.innerHTML = m==="own"
+    ? `<span><i style="background:${FREE}"></i>свободный город</span><span><i style="background:${ROYAL}"></i>Королевский город</span>
+       <span><i style="background:repeating-linear-gradient(-35deg,#52cbb0 0 5px,#3f9a86 5px 9px)"></i>полосы — как в игре</span>
+       ${fadeOn ? `<span><i style="background:${faded("#c85b4a")}"></i>бледные — сильнее нас по мощи (места 1–${strongMaxRank})</span>` : ""}
+       <span>Цифра на щите — уровень. Приблизьте карту, чтобы увидеть названия.</span>
+       <span>Стрелки и пунктир — планы захвата альянсов.</span>`
+    : [1,2,3,4,5,6].map(l=>`<span><i style="background:${LVLCOL[l]}"></i>ур. ${l}</span>`).join("") + `<span><i style="background:${LVLCOL[7]}"></i>Королевский город</span>`;
+}
+document.getElementById("modeOwn").onclick = () => setMode("own");
+document.getElementById("modeLvl").onclick = () => setMode("lvl");
+setMode("own");
+
+// zoom
+let curK = 1;
+const zoom = d3.zoom().scaleExtent([1,8]).translateExtent([[0,0],[DATA.W,DATA.H]])
+  .on("zoom", e => { root.attr("transform", e.transform); curK = e.transform.k; rescale(); });
+svg.call(zoom).on("dblclick.zoom", null);
+function rescale(){ inner.attr("transform", `scale(${1/Math.pow(curK,0.62)})`); svg.classed("zoomed", curK >= 2.2);
+  defs.selectAll(".arrow").attr("markerWidth", 46/Math.pow(curK,0.75)).attr("markerHeight", 46/Math.pow(curK,0.75)); }
+rescale();
+function focus(c, k){
+  k = Math.max(k||2.6, curK);
+  const t = d3.zoomIdentity.translate(DATA.W/2, DATA.H/2).scale(k).translate(-c.z.ax,-c.z.ay);
+  svg.transition().duration(window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450).call(zoom.transform, t);
+}
+document.getElementById("zin").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1.6);
+document.getElementById("zout").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1/1.6);
+document.getElementById("zreset").onclick = () => svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
+
+// level filter
+const shown = new Set([1,2,3,4,5,6,7]);
+const lvWrap = document.getElementById("lv");
+[1,2,3,4,5,6,7].forEach(l => {
+  const b = document.createElement("button"); b.type="button"; b.id="lv"+l;
+  b.textContent = l===7 ? "К" : l; b.title = lvlName(l); b.setAttribute("aria-pressed","true");
+  b.onclick = () => { shown.has(l) ? shown.delete(l) : shown.add(l); b.setAttribute("aria-pressed", shown.has(l)); mk.classed("off", c=>!shown.has(c.lvl)); };
+  lvWrap.appendChild(b);
+});
+
+// alliance list + highlight
+const list = document.getElementById("list");
+document.getElementById("fadeStrong").addEventListener("change", e => { fadeOn = e.target.checked; setMode(mode); });
+alliances.forEach(a => {
+  if (a.rank === 11) { const c=document.createElement("div"); c.className="cut"; c.textContent="за пределами топ-10"; list.appendChild(c); }
+  if ((a.rank === null || a.rank > 33) && !list.querySelector(".cut.out")) { const c=document.createElement("div"); c.className="cut out"; c.textContent="ниже 33-го места"; list.appendChild(c); }
+  const b = document.createElement("button"); b.type="button"; b.className="row"+(a.tag===OURS?" ours":"")+(STRONG.has(a.tag)?" strong":""); b.id="al-"+a.tag;
+  b.setAttribute("aria-pressed","false");
+  const col = colorOf(a.tag), st = a.tag && STYLE[a.tag] && STYLE[a.tag][1];
+  const swStyle = col ? (st ? `background:repeating-linear-gradient(-35deg,${col} 0 4px,rgba(0,0,0,.28) 4px 6px),${col}` : `background:${col}`) : "";
+  const lv = {}; a.cities.forEach(i=>{const l=CITIES[i].lvl; lv[l]=(lv[l]||0)+1;});
+  const cityTxt = a.cities.length ? "Города: " + Object.keys(lv).sort((x,y)=>y-x).map(l=>`ур. ${l} — ${lv[l]}`).join(", ") + " · " + buffSummary(a) : "Городов нет";
+  b.innerHTML = `<span class="rk ${a.rank&&a.rank<=3?"top":""}">${a.rank ?? "—"}</span>
+    <span class="sw ${col?"":"none"}" style="${swStyle}"></span>
+    <span class="nm"><b>${a.tag}</b>${a.tag===OURS?'<span class="us">мы</span>':""}<span class="full">${a.name||""}</span><span class="cities">${cityTxt}</span></span>
+    <span class="mt">${a.might?fmtM(a.might):""}</span>`;
+  b.onclick = () => highlight(hlTag === a.tag ? null : a.tag);
+  list.appendChild(b);
+});
+list.classList.toggle("fade", fadeOn);
+function highlight(tag){
+  hlTag = tag; svg.classed("hl", !!tag); refreshFill();
+  zoneSel.classed("on", c=>c.tag===tag); strSel.classed("on", c=>c.tag===tag); mk.classed("on", c=>c.tag===tag);
+  list.querySelectorAll(".row").forEach(r => r.setAttribute("aria-pressed", r.id === "al-"+tag));
+}
+
+// city card
+const selEl = document.getElementById("sel");
+function select(i, doFocus){
+  const c = CITIES[i], z = c.z;
+  selZone.attr("display",null).attr("d", pathOf(z));
+  const a = c.tag ? byTag[c.tag] : null, col = colorOf(c.tag);
+  const owner = c.lvl===7 ? `<div class="owner"><span class="sw" style="background:${ROYAL}"></span><div class="t"><b>Король свободен</b><span class="sub">Первая битва — около 12 ноября</span></div></div>`
+    : a ? `<div class="owner"><span class="sw" style="background:${col}"></span><div class="t"><b>[${a.tag}] ${a.name||""}</b>${a.tag===OURS?'<span class="us">мы</span>':""}<span class="sub">${a.rank?`${a.rank}-е место · ${fmtM(a.might)}`:"ниже 33-го места в рейтинге"}</span></div></div>`
+    : `<div class="owner"><span class="sw" style="background:${FREE}"></span><div class="t"><b>Свободен</b><span class="sub">${c.lvl===6?"Откроется 6 ноября в 00:00 по серверу":"Никому не принадлежит"}</span></div></div>`;
+  const buff = z.buff ? `<p class="buff">Бафф всему альянсу: ${BUFF[z.buff][0]} <b>+${z.pct}%</b></p>` : "";
+  const inP = PLANS.filter(p => p.zones.includes(z.id)).map(p => `<span style="background:${p.color}"></span>в плане ${p.label}${p.zones.length > 1 ? `, шаг ${p.zones.indexOf(z.id)+1} из ${p.zones.length}` : ""}`);
+  const planLine = inP.length ? `<p class="inplan">${inP.join("<br>")}</p>` : "";
+  const nb = (NB[z.id]||[]).map(zid => cityByZone[zid]).filter(j=>j!==undefined).map(j=>({j,c:CITIES[j]}))
+    .sort((x,y)=>x.c.lvl-y.c.lvl||x.c.name.localeCompare(y.c.name,"ru"));
+  selEl.innerHTML = `<h2>Город</h2>
+    <div class="city-title"><span class="badge">${c.lvl}</span><h3>${c.name}<small>${lvlName(c.lvl)}</small></h3></div>
+    ${buff}${planLine}${owner}
+    <div class="nb"><p>Соседние зоны:</p><div class="chips">${nb.map(n=>`<button type="button" class="chipbtn" data-j="${n.j}">${n.c.name}<em>${n.c.tag?n.c.tag:"ур. "+n.c.lvl}</em></button>`).join("")}</div></div>`;
+  selEl.querySelectorAll(".chipbtn").forEach(btn => btn.onclick = () => select(+btn.dataset.j, true));
+  if (doFocus) focus(c);
+}
+
+// search
+const dl = document.getElementById("citylist");
+CITIES.map(c=>c.name).sort((a,b)=>a.localeCompare(b,"ru")).forEach(n=>{const o=document.createElement("option"); o.value=n; dl.appendChild(o);});
+document.getElementById("find").addEventListener("change", e => {
+  const q = e.target.value.trim().toLowerCase(); if (!q) return;
+  let i = CITIES.findIndex(c=>c.name.toLowerCase()===q); if (i < 0) i = CITIES.findIndex(c=>c.name.toLowerCase().includes(q));
+  if (i >= 0) select(i, true);
+});
+
+select(CITIES.findIndex(c=>c.tag===OURS));
+</script>
+
+</body>
+</html>
